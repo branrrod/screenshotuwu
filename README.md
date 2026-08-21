@@ -5,14 +5,17 @@ Lightweight Windows tray app. It sits idle in the notification area, then freeze
 ## Use
 
 1. Run `Screenshotuwu`.
-2. Click the pink camera icon in the notification area (bottom-right). Right-click the icon for **Capture** or **Exit**.
+2. Click the uwu tray icon in the notification area (bottom-right). Right-click the icon for **Capture** or **Exit**.
 3. Drag a rectangle across any monitor. Escape or right-click cancels.
 4. The capture stays as a borderless picture where you drew it.
 5. Click and drag the picture to move it.
 6. Right-click the picture:
-   - **Save as PNG** / **Save as JPG** — writes the picture including any highlighter or ink.
-   - **Highlight** — toggle a thick yellow marker. Repeat to turn it off.
-   - **Draw** — toggle a thin red line. Repeat to turn it off.
+   - **Copy** — puts PNG (and a bitmap fallback) on the clipboard, including any highlighter or ink.
+   - **Save as PNG** / **Save as JPG** — writes the picture including markup.
+   - **Highlight** — toggle a translucent marker. Repeat to turn it off.
+   - **Highlight color** / **Highlight thickness** — pick the marker.
+   - **Draw** — toggle a thin line. Repeat to turn it off.
+   - **Draw color** / **Draw thickness** — pick the pen.
    Only one tool can be on at a time.
 7. With both tools off, click the picture (without dragging) to dismiss it. Unsaved captures are discarded.
 

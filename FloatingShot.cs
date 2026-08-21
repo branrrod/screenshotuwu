@@ -1,5 +1,6 @@
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
+using System.IO;
 
 namespace Screenshotuwu;
 
@@ -12,17 +13,57 @@ internal sealed class FloatingShot : Form
         Draw
     }
 
-    private static readonly Color HighlightColor = Color.FromArgb(90, 255, 224, 32);
-    private static readonly Color DrawColor = Color.FromArgb(255, 226, 59, 74);
-    private const float HighlightWidth = 18f;
-    private const float DrawWidth = 2.4f;
+    private const int HighlightAlpha = 42;
+
+    private static readonly (string Name, Color Value)[] HighlightPalette =
+    {
+        ("Yellow", Color.FromArgb(255, 255, 224, 32)),
+        ("Pink", Color.FromArgb(255, 255, 143, 191)),
+        ("Green", Color.FromArgb(255, 140, 230, 90)),
+        ("Blue", Color.FromArgb(255, 90, 190, 255)),
+        ("Orange", Color.FromArgb(255, 255, 160, 50)),
+    };
+
+    private static readonly (string Name, Color Value)[] DrawPalette =
+    {
+        ("Red", Color.FromArgb(255, 226, 59, 74)),
+        ("Black", Color.FromArgb(255, 40, 40, 40)),
+        ("White", Color.FromArgb(255, 250, 250, 250)),
+        ("Blue", Color.FromArgb(255, 40, 110, 220)),
+        ("Pink", Color.FromArgb(255, 255, 105, 180)),
+    };
+
+    private static readonly (string Name, float Value)[] HighlightThicknesses =
+    {
+        ("Thin", 10f),
+        ("Medium", 18f),
+        ("Thick", 28f),
+        ("Extra thick", 40f),
+    };
+
+    private static readonly (string Name, float Value)[] DrawThicknesses =
+    {
+        ("1 px", 1f),
+        ("2 px", 2.4f),
+        ("4 px", 4f),
+        ("6 px", 6f),
+        ("10 px", 10f),
+    };
 
     private readonly Bitmap _photo;
     private readonly Bitmap _markup;
     private readonly ToolStripMenuItem _highlightItem;
     private readonly ToolStripMenuItem _drawItem;
+    private readonly ToolStripMenuItem _highlightColorMenu;
+    private readonly ToolStripMenuItem _highlightThicknessMenu;
+    private readonly ToolStripMenuItem _drawColorMenu;
+    private readonly ToolStripMenuItem _drawThicknessMenu;
 
     private ToolMode _mode = ToolMode.None;
+    private Color _highlightRgb = HighlightPalette[0].Value;
+    private Color _drawColor = DrawPalette[0].Value;
+    private float _highlightWidth = HighlightThicknesses[1].Value;
+    private float _drawWidth = DrawThicknesses[1].Value;
     private bool _stroking;
     private bool _moving;
     private bool _moved;
@@ -55,12 +96,22 @@ internal sealed class FloatingShot : Form
         _drawItem = new ToolStripMenuItem("Draw");
         _drawItem.Click += (_, _) => ToggleTool(ToolMode.Draw);
 
+        _highlightColorMenu = BuildColorMenu("Highlight color", HighlightPalette, c => _highlightRgb = c);
+        _highlightThicknessMenu = BuildThicknessMenu("Highlight thickness", HighlightThicknesses, w => _highlightWidth = w);
+        _drawColorMenu = BuildColorMenu("Draw color", DrawPalette, c => _drawColor = c);
+        _drawThicknessMenu = BuildThicknessMenu("Draw thickness", DrawThicknesses, w => _drawWidth = w);
+
         var menu = new ContextMenuStrip();
+        menu.Items.Add("Copy", null, (_, _) => CopyToClipboard());
         menu.Items.Add("Save as PNG", null, (_, _) => Save(ImageFormat.Png, "png", "PNG image|*.png"));
         menu.Items.Add("Save as JPG", null, (_, _) => Save(ImageFormat.Jpeg, "jpg", "JPEG image|*.jpg"));
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(_highlightItem);
+        menu.Items.Add(_highlightColorMenu);
+        menu.Items.Add(_highlightThicknessMenu);
         menu.Items.Add(_drawItem);
+        menu.Items.Add(_drawColorMenu);
+        menu.Items.Add(_drawThicknessMenu);
         menu.Opening += (_, _) => SyncMenuChecks();
         ContextMenuStrip = menu;
     }
@@ -165,7 +216,60 @@ internal sealed class FloatingShot : Form
     {
         _highlightItem.Checked = _mode == ToolMode.Highlight;
         _drawItem.Checked = _mode == ToolMode.Draw;
+        SyncChoiceChecks(_highlightColorMenu, item => ((Color)item.Tag!).ToArgb() == _highlightRgb.ToArgb());
+        SyncChoiceChecks(_drawColorMenu, item => ((Color)item.Tag!).ToArgb() == _drawColor.ToArgb());
+        SyncChoiceChecks(_highlightThicknessMenu, item => (float)item.Tag! == _highlightWidth);
+        SyncChoiceChecks(_drawThicknessMenu, item => (float)item.Tag! == _drawWidth);
     }
+
+    private static void SyncChoiceChecks(ToolStripMenuItem menu, Func<ToolStripMenuItem, bool> isSelected)
+    {
+        foreach (ToolStripItem raw in menu.DropDownItems)
+        {
+            if (raw is ToolStripMenuItem item)
+                item.Checked = isSelected(item);
+        }
+    }
+
+    private static ToolStripMenuItem BuildColorMenu(
+        string title,
+        (string Name, Color Value)[] palette,
+        Action<Color> setter)
+    {
+        var menu = new ToolStripMenuItem(title);
+        foreach ((string name, Color value) in palette)
+        {
+            var item = new ToolStripMenuItem(name) { Tag = value };
+            item.Click += (_, _) => setter(value);
+            menu.DropDownItems.Add(item);
+        }
+
+        return menu;
+    }
+
+    private static ToolStripMenuItem BuildThicknessMenu(
+        string title,
+        (string Name, float Value)[] options,
+        Action<float> setter)
+    {
+        var menu = new ToolStripMenuItem(title);
+        foreach ((string name, float value) in options)
+        {
+            var item = new ToolStripMenuItem(name) { Tag = value };
+            item.Click += (_, _) => setter(value);
+            menu.DropDownItems.Add(item);
+        }
+
+        return menu;
+    }
+
+    private Color CurrentStrokeColor =>
+        _mode == ToolMode.Highlight
+            ? Color.FromArgb(HighlightAlpha, _highlightRgb)
+            : _drawColor;
+
+    private float CurrentStrokeWidth =>
+        _mode == ToolMode.Highlight ? _highlightWidth : _drawWidth;
 
     private void Stroke(Point from, Point to)
     {
@@ -173,10 +277,8 @@ internal sealed class FloatingShot : Form
         g.SmoothingMode = SmoothingMode.AntiAlias;
         g.CompositingMode = CompositingMode.SourceOver;
 
-        bool highlight = _mode == ToolMode.Highlight;
-        using var pen = new Pen(
-            highlight ? HighlightColor : DrawColor,
-            highlight ? HighlightWidth : DrawWidth)
+        float width = CurrentStrokeWidth;
+        using var pen = new Pen(CurrentStrokeColor, width)
         {
             StartCap = LineCap.Round,
             EndCap = LineCap.Round,
@@ -184,13 +286,38 @@ internal sealed class FloatingShot : Form
         };
         g.DrawLine(pen, from, to);
 
-        int pad = (int)Math.Ceiling((highlight ? HighlightWidth : DrawWidth) / 2f) + 2;
+        int pad = (int)Math.Ceiling(width / 2f) + 2;
         int x = Math.Max(0, Math.Min(from.X, to.X) - pad);
         int y = Math.Max(0, Math.Min(from.Y, to.Y) - pad);
         int w = Math.Min(_markup.Width - x, Math.Abs(from.X - to.X) + pad * 2);
         int h = Math.Min(_markup.Height - y, Math.Abs(from.Y - to.Y) + pad * 2);
         if (w > 0 && h > 0)
             Invalidate(new Rectangle(x, y, w, h));
+    }
+
+    private void CopyToClipboard()
+    {
+        try
+        {
+            using Bitmap composite = Composite();
+            using var png = new MemoryStream();
+            composite.Save(png, ImageFormat.Png);
+            byte[] bytes = png.ToArray();
+
+            var data = new DataObject();
+            data.SetImage(composite);
+            data.SetData("PNG", false, new MemoryStream(bytes));
+            Clipboard.SetDataObject(data, copy: true);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                this,
+                $"Could not copy the image:\n{ex.Message}",
+                "Screenshotuwu",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
+        }
     }
 
     private void Save(ImageFormat format, string extension, string filter)

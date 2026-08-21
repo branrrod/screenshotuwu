@@ -6,12 +6,18 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWindowsForms>true</UseWindowsForms>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\screenshotuwu.ico</ApplicationIcon>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <RootNamespace>Screenshotuwu</RootNamespace>
     <AssemblyName>Screenshotuwu</AssemblyName>
     <Product>Screenshotuwu</Product>
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
     <Description>Lightweight tray screenshot overlays for Windows.</Description>
     <NeutralLanguage>en-US</NeutralLanguage>
   </PropertyGroup>
+  <ItemGroup>
+    <Content Include="Assets\screenshotuwu.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
 </Project>
