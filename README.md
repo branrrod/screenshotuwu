@@ -25,6 +25,17 @@ Lightweight Windows tray app. It sits idle in the notification area, then freeze
 dotnet run -c Release
 ```
 
-Build output: `bin/Release/net8.0-windows/Screenshotuwu.exe`
+That `bin/Release/net8.0-windows/Screenshotuwu.exe` is only a stub. It will not start if you copy it alone (it needs the `.dll` and `.runtimeconfig.json` beside it).
 
-Windows 10/11. Requires the .NET 8 desktop runtime (or SDK) to run from source.
+For a Desktop shortcut, either:
+
+- Right-click the project-folder exe → **Create shortcut**, then move the shortcut; or
+- Publish a single file you *can* copy:
+
+```bash
+dotnet publish -c Release -p:PublishProfile=Desktop
+```
+
+Copy `bin/Release/net8.0-windows/win-x64/publish/Screenshotuwu.exe` anywhere. Still needs the .NET 8 desktop runtime installed.
+
+Windows 10/11.
