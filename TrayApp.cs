@@ -11,6 +11,7 @@ internal sealed class TrayApp : ApplicationContext
         var menu = new ContextMenuStrip();
         menu.Items.Add("Capture", null, (_, _) => BeginCapture());
         menu.Items.Add(new ToolStripSeparator());
+        menu.Items.Add(CreateStartWithWindowsItem());
         menu.Items.Add("Exit", null, (_, _) => Quit());
 
         _tray = new NotifyIcon
@@ -21,6 +22,34 @@ internal sealed class TrayApp : ApplicationContext
             ContextMenuStrip = menu
         };
         _tray.MouseClick += OnTrayClick;
+    }
+
+    private static ToolStripMenuItem CreateStartWithWindowsItem()
+    {
+        bool enabled;
+        try
+        {
+            enabled = Autostart.Sync();
+        }
+        catch
+        {
+            enabled = false; // registry unavailable: show unchecked, never block startup
+        }
+
+        var item = new ToolStripMenuItem("Start with Windows") { CheckOnClick = true, Checked = enabled };
+        item.CheckedChanged += (_, _) =>
+        {
+            try
+            {
+                Autostart.SetEnabled(item.Checked);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Could not update Start with Windows: {ex.Message}", "Screenshotuwu",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        };
+        return item;
     }
 
     private void OnTrayClick(object? sender, MouseEventArgs e)
