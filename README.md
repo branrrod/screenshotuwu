@@ -38,4 +38,6 @@ dotnet publish -c Release -p:PublishProfile=Desktop
 
 Copy `bin/Release/net8.0-windows/win-x64/publish/Screenshotuwu.exe` anywhere. Still needs the .NET 8 desktop runtime installed.
 
+Right-click the tray icon to toggle **Start with Windows** (on by default; adds a per-user `HKCU\...\Run` entry pointing at the exe you ran, and remembers if you turn it off).
+
 Windows 10/11.
