@@ -13,7 +13,8 @@ internal sealed class FloatingShot : Form
         Draw
     }
 
-    private const int HighlightAlpha = 42;
+    // Opacity of one highlighter pass. A stroke never darkens over itself; a new stroke stacks.
+    private const float HighlightOpacity = 0.35f;
 
     private static readonly (string Name, Color Value)[] HighlightPalette =
     {
@@ -69,6 +70,7 @@ internal sealed class FloatingShot : Form
     private bool _moved;
     private Point _lastPoint;
     private Point _grabOffset;
+    private HighlightStroke? _highlightStroke;
 
     public FloatingShot(Bitmap photo, Point screenLocation)
     {
@@ -155,6 +157,9 @@ internal sealed class FloatingShot : Form
             _stroking = true;
             _lastPoint = e.Location;
             Capture = true;
+            EndHighlightStroke();
+            if (_mode == ToolMode.Highlight)
+                _highlightStroke = new HighlightStroke(_markup, _highlightRgb, _highlightWidth, HighlightOpacity);
             Stroke(_lastPoint, _lastPoint);
         }
 
@@ -191,6 +196,7 @@ internal sealed class FloatingShot : Form
             if (_stroking)
             {
                 _stroking = false;
+                EndHighlightStroke();
             }
             else if (_moving)
             {
@@ -207,6 +213,7 @@ internal sealed class FloatingShot : Form
     {
         _mode = _mode == mode ? ToolMode.None : mode;
         _stroking = false;
+        EndHighlightStroke();
         _moving = false;
         Cursor = _mode == ToolMode.None ? Cursors.SizeAll : Cursors.Cross;
         SyncMenuChecks();
@@ -263,22 +270,28 @@ internal sealed class FloatingShot : Form
         return menu;
     }
 
-    private Color CurrentStrokeColor =>
-        _mode == ToolMode.Highlight
-            ? Color.FromArgb(HighlightAlpha, _highlightRgb)
-            : _drawColor;
-
-    private float CurrentStrokeWidth =>
-        _mode == ToolMode.Highlight ? _highlightWidth : _drawWidth;
+    private void EndHighlightStroke()
+    {
+        _highlightStroke?.Dispose();
+        _highlightStroke = null;
+    }
 
     private void Stroke(Point from, Point to)
     {
+        if (_highlightStroke is not null)
+        {
+            Rectangle dirty = _highlightStroke.AddSegment(from, to);
+            if (!dirty.IsEmpty)
+                Invalidate(dirty);
+            return;
+        }
+
         using var g = Graphics.FromImage(_markup);
         g.SmoothingMode = SmoothingMode.AntiAlias;
         g.CompositingMode = CompositingMode.SourceOver;
 
-        float width = CurrentStrokeWidth;
-        using var pen = new Pen(CurrentStrokeColor, width)
+        float width = _drawWidth;
+        using var pen = new Pen(_drawColor, width)
         {
             StartCap = LineCap.Round,
             EndCap = LineCap.Round,
@@ -382,6 +395,7 @@ internal sealed class FloatingShot : Form
 
     protected override void OnFormClosed(FormClosedEventArgs e)
     {
+        EndHighlightStroke();
         _photo.Dispose();
         _markup.Dispose();
         base.OnFormClosed(e);
